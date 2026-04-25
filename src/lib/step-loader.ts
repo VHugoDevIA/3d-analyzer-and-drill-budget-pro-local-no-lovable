@@ -36,9 +36,39 @@ export interface DetectedFeature {
   _ratio?: number;
 }
 
-let occtInstance: any = null;
+interface OcctReadOptions {
+  linearDeflection: number;
+  angularDeflection: number;
+}
 
-async function getOcct() {
+interface OcctBrepFace {
+  first: number;
+  last: number;
+  color?: number[];
+}
+
+interface OcctMesh {
+  name?: string;
+  color?: number[];
+  attributes: {
+    position: { array: Float32Array | number[] };
+    normal?: { array: Float32Array | number[] };
+  };
+  index: { array: Uint32Array | number[] };
+  brep_faces?: OcctBrepFace[];
+}
+
+interface OcctReadResult {
+  meshes: OcctMesh[];
+}
+
+interface OcctImporter {
+  ReadStepFile(buffer: Uint8Array, options: OcctReadOptions | null): OcctReadResult;
+}
+
+let occtInstance: OcctImporter | null = null;
+
+async function getOcct(): Promise<OcctImporter> {
   if (!occtInstance) {
     occtInstance = await occtimportjs({
       locateFile: (name: string) => {
@@ -47,7 +77,7 @@ async function getOcct() {
         }
         return name;
       },
-    });
+    }) as OcctImporter;
   }
   return occtInstance;
 }

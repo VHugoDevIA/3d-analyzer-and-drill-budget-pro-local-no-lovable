@@ -62,7 +62,7 @@ function ClickableFaces({
         const isHovered = hoveredIndex === fg.faceIndex;
         const isSelectable = step !== "done";
 
-        let color = "transparent";
+        let color = "#ffffff";
         let opacity = 0.0;
 
         if (isSelectedZ) {
@@ -200,11 +200,13 @@ export function AlignmentPicker({ meshData, onConfirm, onSkip }: AlignmentPicker
           <CardTitle className="text-sm flex items-center gap-2">
             Alinhamento do Modelo
           </CardTitle>
-          <p className={`text-sm font-semibold ${stepColor}`}>
-            {step === "z+" && <ArrowUp className="w-4 h-4 inline mr-1" />}
-            {step === "x+" && <ArrowRight className="w-4 h-4 inline mr-1" />}
-            {step === "done" && <Check className="w-4 h-4 inline mr-1" />}
-            {stepLabel}
+          <p className={`text-sm font-semibold ${stepColor} flex items-center gap-1.5`}>
+            <span className="inline-flex w-4 h-4 shrink-0" aria-hidden="true">
+              <ArrowUp className={`w-4 h-4 ${step === "z+" ? "block" : "hidden"}`} />
+              <ArrowRight className={`w-4 h-4 ${step === "x+" ? "block" : "hidden"}`} />
+              <Check className={`w-4 h-4 ${step === "done" ? "block" : "hidden"}`} />
+            </span>
+            <span>{stepLabel}</span>
           </p>
         </CardHeader>
         <CardContent className="p-0">

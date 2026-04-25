@@ -36,6 +36,27 @@ export interface DetectedFeature {
   _ratio?: number;
 }
 
+const STEP_DEBUG_QUERY_PARAM = "debugStep";
+const STEP_DEBUG_STORAGE_KEY = "drillAnalyzer.debug.step";
+
+function isStepDebugEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const queryEnabled = new URLSearchParams(window.location.search).get(STEP_DEBUG_QUERY_PARAM) === "1";
+    const storageEnabled = window.localStorage.getItem(STEP_DEBUG_STORAGE_KEY) === "true";
+    return queryEnabled || storageEnabled;
+  } catch {
+    return false;
+  }
+}
+
+function logStepDebug(message: string, ...args: unknown[]): void {
+  if (isStepDebugEnabled()) {
+    console.log(message, ...args);
+  }
+}
+
 interface OcctReadOptions {
   linearDeflection: number;
   angularDeflection: number;
@@ -683,7 +704,7 @@ export function detectFeatures(meshData: StepMeshData): DetectedFeature[] {
   for (const mesh of meshData.meshes) {
     typeCounts[mesh.faceType] = (typeCounts[mesh.faceType] || 0) + 1;
   }
-  console.log("[STEP] Face classification:", typeCounts);
+  logStepDebug("[STEP] Face classification:", typeCounts);
 
   for (const mesh of meshData.meshes) {
     if (!mesh.estimatedDiameter || !mesh.center || !mesh.normal) continue;
@@ -698,27 +719,27 @@ export function detectFeatures(meshData: StepMeshData): DetectedFeature[] {
 
     // Reject very long cylindrical surfaces that are usually outer/structural geometry (not holes)
     if (depth > maxDim * 0.85) {
-      console.log(`[STEP] Skipping long cylindrical surface: d=${mesh.estimatedDiameter} depth=${depth} face=${mesh.name}`);
+      logStepDebug(`[STEP] Skipping long cylindrical surface: d=${mesh.estimatedDiameter} depth=${depth} face=${mesh.name}`);
       continue;
     }
     if (depthDiaRatio > 20 && depth > maxDim * 0.2) {
-      console.log(`[STEP] Skipping extreme depth/diameter surface: d=${mesh.estimatedDiameter} depth=${depth} ratio=${depthDiaRatio.toFixed(2)} face=${mesh.name}`);
+      logStepDebug(`[STEP] Skipping extreme depth/diameter surface: d=${mesh.estimatedDiameter} depth=${depth} ratio=${depthDiaRatio.toFixed(2)} face=${mesh.name}`);
       continue;
     }
 
     // Filter chamfers/fillets: very shallow depth relative to diameter
     if (depthDiaRatio < 0.2 && depthDiaRatio > 0) {
-      console.log(`[STEP] Skipping chamfer/fillet: d=${mesh.estimatedDiameter} depth=${depth} ratio=${depthDiaRatio.toFixed(3)} face=${mesh.name}`);
+      logStepDebug(`[STEP] Skipping chamfer/fillet: d=${mesh.estimatedDiameter} depth=${depth} ratio=${depthDiaRatio.toFixed(3)} face=${mesh.name}`);
       continue;
     }
 
     // Filter planar faces that look circular (hole bottoms) — they have faceType=planar but extractCylindricalData found a diameter
     if (mesh.faceType === "planar") {
-      console.log(`[STEP] Skipping planar circular face (hole bottom): d=${mesh.estimatedDiameter} face=${mesh.name}`);
+      logStepDebug(`[STEP] Skipping planar circular face (hole bottom): d=${mesh.estimatedDiameter} face=${mesh.name}`);
       continue;
     }
 
-    console.log(`[STEP] Candidate hole: d=${mesh.estimatedDiameter} depth=${depth} depthDiaRatio=${depthDiaRatio.toFixed(2)} normal=[${mesh.normal?.map(n=>n.toFixed(2))}] face=${mesh.name} type=${mesh.faceType}`);
+    logStepDebug(`[STEP] Candidate hole: d=${mesh.estimatedDiameter} depth=${depth} depthDiaRatio=${depthDiaRatio.toFixed(2)} normal=[${mesh.normal?.map(n=>n.toFixed(2))}] face=${mesh.name} type=${mesh.faceType}`);
 
     features.push({
       type: "hole",
@@ -730,12 +751,12 @@ export function detectFeatures(meshData: StepMeshData): DetectedFeature[] {
     });
   }
 
-  console.log("[STEP] Raw candidate features:", features.length);
+  logStepDebug("[STEP] Raw candidate features:", features.length);
   // Skip outlier filter when count is low — likely all real holes
   const filtered = features.length > 30 ? filterDiameterOutliers(features) : features;
-  console.log("[STEP] After outlier filter:", filtered.length);
+  logStepDebug("[STEP] After outlier filter:", filtered.length);
   const merged = mergeNearbyFeatures(filtered);
-  console.log("[STEP] Post-merge features:", merged.length);
+  logStepDebug("[STEP] Post-merge features:", merged.length);
 
   // Classify holes as through (Passante) or blind (Cego)
   for (const f of merged) {
@@ -759,7 +780,7 @@ export function detectFeatures(meshData: StepMeshData): DetectedFeature[] {
     const ratio = f.depth / thickness;
     f._ratio = ratio;
     f.holeType = ratio >= 0.75 ? "Passante" : "Cego";
-    console.log(`[STEP] Hole d=${f.diameter} depth=${f.depth} thickness=${thickness.toFixed(2)} ratio=${ratio.toFixed(2)} => ${f.holeType}`);
+    logStepDebug(`[STEP] Hole d=${f.diameter} depth=${f.depth} thickness=${thickness.toFixed(2)} ratio=${ratio.toFixed(2)} => ${f.holeType}`);
   }
 
   return merged;

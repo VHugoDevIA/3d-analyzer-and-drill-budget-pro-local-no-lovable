@@ -62,7 +62,7 @@ function ClickableFaces({
         const isHovered = hoveredIndex === fg.faceIndex;
         const isSelectable = step !== "done";
 
-        let color = "transparent";
+        let color = "#ffffff";
         let opacity = 0.0;
 
         if (isSelectedZ) {

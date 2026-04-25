@@ -2,6 +2,36 @@ import { HoleData, HoleAxis, HoleType } from "@/types/holes";
 
 const AXIS_ALIGNMENT_TOL = 0.95;
 const MIN_VALID_DEPTH = 0.01;
+const HOLE_AXES: HoleAxis[] = ["Z+", "Z-", "X+", "X-", "Y+", "Y-", "Obliquo"];
+
+type JsonRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function field(item: JsonRecord, keys: string[]): unknown {
+  for (const key of keys) {
+    if (item[key] !== undefined) return item[key];
+  }
+  return undefined;
+}
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string") return null;
+
+  const parsed = parseFloat(value.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toText(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function isHoleAxis(value: unknown): value is HoleAxis {
+  return typeof value === "string" && HOLE_AXES.includes(value as HoleAxis);
+}
 
 function classifyAxis(nx: number, ny: number, nz: number, tol = AXIS_ALIGNMENT_TOL): HoleAxis {
   const ax = Math.abs(nx), ay = Math.abs(ny), az = Math.abs(nz);
@@ -81,7 +111,7 @@ export function parseCSV(text: string): HoleData[] {
       angle: num(colMap.angle),
       depth: num(colMap.depth),
       type: (typeStr === "Passante" || typeStr === "Cego" ? typeStr : "Desconhecido") as HoleType,
-      axis: (["Z+", "Z-", "X+", "X-", "Y+", "Y-", "Obliquo"].includes(axisStr) ? axisStr : classifyAxis(nx, ny, nz)) as HoleAxis,
+      axis: (HOLE_AXES.includes(axisStr as HoleAxis) ? axisStr : classifyAxis(nx, ny, nz)) as HoleAxis,
       colorRGB: null,
     });
   }
@@ -143,19 +173,29 @@ function groupFacesByPosition(faces: HoleData[], tolerance = 0.5): HoleData[] {
 export function parseJSON(text: string): HoleData[] {
   try {
     const sanitized = text.replace(/\bNaN\b/g, "null").replace(/\bInfinity\b/g, "null").replace(/\b-Infinity\b/g, "null");
-    const data = JSON.parse(sanitized);
-    const arr = Array.isArray(data) ? data : data.furos || data.holes || [];
-    const raw: HoleData[] = arr.map((item: any, i: number) => {
-      const nx = item["Normal X"] ?? item.normalX ?? item.nx ?? 0;
-      const ny = item["Normal Y"] ?? item.normalY ?? item.ny ?? 0;
-      const nz = item["Normal Z"] ?? item.normalZ ?? item.nz ?? 1;
-      const eixo = item["_eixo"] ?? item.Eixo ?? item.axis;
-      const tipo = item["Tipo"] ?? item.type;
+    const data: unknown = JSON.parse(sanitized);
+    const source = Array.isArray(data)
+      ? data
+      : isRecord(data)
+        ? field(data, ["furos", "holes"])
+        : [];
+    const arr = Array.isArray(source) ? source.filter(isRecord) : [];
+
+    const raw: HoleData[] = arr.map((item, i) => {
+      const nx = toNumber(field(item, ["Normal X", "normalX", "nx"])) ?? 0;
+      const ny = toNumber(field(item, ["Normal Y", "normalY", "ny"])) ?? 0;
+      const nz = toNumber(field(item, ["Normal Z", "normalZ", "nz"])) ?? 1;
+      const eixo = field(item, ["_eixo", "Eixo", "axis"]);
+      const tipo = toText(field(item, ["Tipo", "type"]));
 
       let colorRGB: [number, number, number] | null = null;
-      const cor = item["_cor_rgb"] ?? item["Cor (R,G,B)"];
+      const cor = field(item, ["_cor_rgb", "Cor (R,G,B)"]);
       if (Array.isArray(cor) && cor.length === 3) {
-        colorRGB = [cor[0], cor[1], cor[2]];
+        colorRGB = [
+          toNumber(cor[0]) ?? 0,
+          toNumber(cor[1]) ?? 0,
+          toNumber(cor[2]) ?? 0,
+        ];
       } else if (typeof cor === "string") {
         const nums = cor.match(/\d+/g);
         if (nums && nums.length === 3) {
@@ -165,19 +205,19 @@ export function parseJSON(text: string): HoleData[] {
 
       return {
         id: crypto.randomUUID(),
-        faceNumber: item["Face #"] ?? item.face ?? i + 1,
-        objectName: item["Objeto"] ?? item.objectName ?? item.object ?? "—",
-        centerX: item["Centro X"] ?? item.centerX ?? item.x ?? 0,
-        centerY: item["Centro Y"] ?? item.centerY ?? item.y ?? 0,
-        centerZ: item["Centro Z"] ?? item.centerZ ?? item.z ?? 0,
-        diameter: item["Diâmetro (mm)"] ?? item.diameter ?? item.diametro ?? null,
+        faceNumber: toNumber(field(item, ["Face #", "face"])) ?? i + 1,
+        objectName: toText(field(item, ["Objeto", "objectName", "object"])) ?? "—",
+        centerX: toNumber(field(item, ["Centro X", "centerX", "x"])) ?? 0,
+        centerY: toNumber(field(item, ["Centro Y", "centerY", "y"])) ?? 0,
+        centerZ: toNumber(field(item, ["Centro Z", "centerZ", "z"])) ?? 0,
+        diameter: toNumber(field(item, ["Diâmetro (mm)", "diameter", "diametro"])),
         normalX: nx,
         normalY: ny,
         normalZ: nz,
-        angle: item["Ângulo vs Z (graus)"] ?? item["Ângulo vs Z (°)"] ?? item.angle ?? item.angulo ?? null,
-        depth: item["Profundidade (mm)"] ?? item.depth ?? item.profundidade ?? null,
+        angle: toNumber(field(item, ["Ângulo vs Z (graus)", "Ângulo vs Z (°)", "angle", "angulo"])),
+        depth: toNumber(field(item, ["Profundidade (mm)", "depth", "profundidade"])),
         type: (tipo === "Passante" || tipo === "Cego" ? tipo : "Desconhecido") as HoleType,
-        axis: (["Z+", "Z-", "X+", "X-", "Y+", "Y-", "Obliquo"].includes(eixo) ? eixo : classifyAxis(nx, ny, nz)) as HoleAxis,
+        axis: isHoleAxis(eixo) ? eixo : classifyAxis(nx, ny, nz),
         colorRGB,
       };
     });

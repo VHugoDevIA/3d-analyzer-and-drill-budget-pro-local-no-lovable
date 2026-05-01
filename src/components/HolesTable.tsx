@@ -71,7 +71,7 @@ function AxisGroup({
       >
         <span className="w-1 h-full self-stretch bg-white/30 rounded" />
         {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        <span>{axis}</span>
+        <span translate="no">{axis}</span>
         <span className="text-white/80 font-normal">— {selectedCount}/{holes.length} furo(s)</span>
         <span className="ml-auto text-white/60 text-xs">{holes.length}</span>
       </button>
@@ -268,7 +268,7 @@ export function HolesTable({ holes, excludedIds, onToggleHole, onSelectAll, onDe
                       onCheckedChange={() => toggleAxis(opt.value)}
                       className="w-3.5 h-3.5"
                     />
-                    <span className="text-xs font-mono">{opt.label}</span>
+                    <span className="text-xs font-mono" translate="no">{opt.label}</span>
                   </label>
                 ))}
               </div>
@@ -308,7 +308,7 @@ export function HolesTable({ holes, excludedIds, onToggleHole, onSelectAll, onDe
                   <span className="flex items-center gap-1">Furo <SortIcon field="faceNumber" /></span>
                 </TableHead>
                 <TableHead className="text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("diameter")}>
-                  <span className="flex items-center gap-1">Ø (mm) <SortIcon field="diameter" /></span>
+                  <span className="flex items-center gap-1" translate="no">Ø (mm) <SortIcon field="diameter" /></span>
                 </TableHead>
                 <TableHead className="text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("depth")}>
                   <span className="flex items-center gap-1">Prof. (mm) <SortIcon field="depth" /></span>
@@ -320,17 +320,17 @@ export function HolesTable({ holes, excludedIds, onToggleHole, onSelectAll, onDe
                   <span className="flex items-center gap-1">Ângulo (°) <SortIcon field="angle" /></span>
                 </TableHead>
                 <TableHead className="text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("centerX")}>
-                  <span className="flex items-center gap-1">X <SortIcon field="centerX" /></span>
+                  <span className="flex items-center gap-1" translate="no">X <SortIcon field="centerX" /></span>
                 </TableHead>
                 <TableHead className="text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("centerY")}>
-                  <span className="flex items-center gap-1">Y <SortIcon field="centerY" /></span>
+                  <span className="flex items-center gap-1" translate="no">Y <SortIcon field="centerY" /></span>
                 </TableHead>
                 <TableHead className="text-muted-foreground cursor-pointer select-none" onClick={() => handleSort("centerZ")}>
-                  <span className="flex items-center gap-1">Z <SortIcon field="centerZ" /></span>
+                  <span className="flex items-center gap-1" translate="no">Z <SortIcon field="centerZ" /></span>
                 </TableHead>
-                <TableHead className="text-muted-foreground">NX</TableHead>
-                <TableHead className="text-muted-foreground">NY</TableHead>
-                <TableHead className="text-muted-foreground">NZ</TableHead>
+                <TableHead className="text-muted-foreground" translate="no">NX</TableHead>
+                <TableHead className="text-muted-foreground" translate="no">NY</TableHead>
+                <TableHead className="text-muted-foreground" translate="no">NZ</TableHead>
               </TableRow>
             </TableHeader>
           </Table>
